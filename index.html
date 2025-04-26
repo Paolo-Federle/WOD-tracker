@@ -37,23 +37,33 @@
       position: relative;
       margin-bottom: 20px;
     }
-    .creature .delete-button {
+    .creature .delete-button,
+    .creature .duplicate-button {
       position: absolute;
       top: -15px;
-      right: -15px;
-      background: #f44336;
-      border: none;
-      color: white;
       width: 30px;
       height: 30px;
       border-radius: 50%;
       font-size: 18px;
       font-weight: bold;
+      color: white;
+      border: none;
       cursor: pointer;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     }
+    .creature .delete-button {
+      right: -15px;
+      background: #f44336;
+    }
     .creature .delete-button:hover {
       background-color: #e53935;
+    }
+    .creature .duplicate-button {
+      left: -15px;
+      background: #2196f3;
+    }
+    .creature .duplicate-button:hover {
+      background-color: #1976d2;
     }
     .creature-left {
       display: flex;
@@ -220,6 +230,11 @@
       deleteButton.textContent = '×';
       deleteButton.onclick = () => creature.remove();
 
+      const duplicateButton = document.createElement('button');
+      duplicateButton.classList.add('duplicate-button');
+      duplicateButton.textContent = '⧉';
+      duplicateButton.onclick = () => duplicateCreature(creature);
+
       const leftColumnContent = document.createElement('div');
       leftColumnContent.classList.add('creature-left');
 
@@ -281,6 +296,7 @@
       leftColumnContent.appendChild(statsDiv);
 
       creature.appendChild(deleteButton);
+      creature.appendChild(duplicateButton);
       creature.appendChild(leftColumnContent);
       creature.appendChild(rightColumnContent);
 
@@ -290,7 +306,54 @@
         rightColumn.appendChild(creature);
       }
     }
-    addCreature()
+
+    function duplicateCreature(originalCreature) {
+      creatureCount++;
+      const clone = originalCreature.cloneNode(true);
+
+      const nameDiv = clone.querySelector('.creature-name');
+      if (nameDiv) {
+        nameDiv.textContent = `Creature ${creatureCount}`;
+      }
+
+      const healthBoxes = clone.querySelectorAll('.health-bar span');
+      healthBoxes.forEach(box => {
+        box.onclick = () => toggleHealthState(box);
+      });
+
+      const addButton = clone.querySelector('.health-controls button:first-child');
+      const removeButton = clone.querySelector('.health-controls button:last-child');
+      const healthBar = clone.querySelector('.health-bar');
+      if (addButton && removeButton && healthBar) {
+        addButton.onclick = () => {
+          const newHealthBox = document.createElement('span');
+          newHealthBox.onclick = () => toggleHealthState(newHealthBox);
+          healthBar.appendChild(newHealthBox);
+        };
+        removeButton.onclick = () => {
+          if (healthBar.childElementCount > 0) {
+            healthBar.removeChild(healthBar.lastChild);
+          }
+        };
+      }
+
+      const deleteButton = clone.querySelector('.delete-button');
+      if (deleteButton) {
+        deleteButton.onclick = () => clone.remove();
+      }
+      const duplicateButton = clone.querySelector('.duplicate-button');
+      if (duplicateButton) {
+        duplicateButton.onclick = () => duplicateCreature(clone);
+      }
+
+      if (creatureCount % 2 === 1) {
+        leftColumn.appendChild(clone);
+      } else {
+        rightColumn.appendChild(clone);
+      }
+    }
+
+    addCreature();
   </script>
 </body>
 </html>
