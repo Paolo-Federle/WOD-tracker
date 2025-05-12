@@ -59,7 +59,7 @@
       background-color: #e53935;
     }
     .creature .duplicate-button {
-      right: 20px; /* slightly left from delete button */
+      right: 20px;
       background: #2196f3;
     }
     .creature .duplicate-button:hover {
@@ -169,9 +169,21 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 14px;
+      margin: 5px;
     }
     .add-creature button:hover {
       background-color: #45a049;
+    }
+    .controls-bottom {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .controls-bottom button,
+    .controls-bottom input {
+      margin: 5px;
+      padding: 10px 15px;
+      border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -185,22 +197,15 @@
     </div>
   </div>
 
+  <div class="controls-bottom">
+    <button onclick="saveCreatures()">Scarica</button>
+    <input type="file" accept="application/json" onchange="loadCreatures(event)">
+  </div>
+
   <script>
     const leftColumn = document.getElementById('left-column');
     const rightColumn = document.getElementById('right-column');
     let creatureCount = 0;
-
-    function createHealthBar(healthCount = 7) {
-      const healthBar = document.createElement('div');
-      healthBar.classList.add('health-bar');
-      for (let i = 0; i < healthCount; i++) {
-        const healthBox = document.createElement('span');
-        healthBox.textContent = '';
-        healthBox.onclick = () => toggleHealthState(healthBox);
-        healthBar.appendChild(healthBox);
-      }
-      return healthBar;
-    }
 
     function toggleHealthState(box) {
       if (box.classList.contains('bashing')) {
@@ -220,137 +225,158 @@
       }
     }
 
-    function addCreature() {
+    function createHealthBar(count = 7) {
+      const bar = document.createElement('div');
+      bar.classList.add('health-bar');
+      for (let i = 0; i < count; i++) {
+        const box = document.createElement('span');
+        box.onclick = () => toggleHealthState(box);
+        bar.appendChild(box);
+      }
+      return bar;
+    }
+
+    function addCreature(data = null) {
       creatureCount++;
       const creature = document.createElement('div');
       creature.classList.add('creature');
 
-      const deleteButton = document.createElement('button');
-      deleteButton.classList.add('delete-button');
-      deleteButton.textContent = '×';
-      deleteButton.onclick = () => creature.remove();
+      const deleteBtn = document.createElement('button');
+      deleteBtn.classList.add('delete-button');
+      deleteBtn.textContent = '×';
+      deleteBtn.onclick = () => creature.remove();
 
-      const duplicateButton = document.createElement('button');
-      duplicateButton.classList.add('duplicate-button');
-      duplicateButton.textContent = '⧉';
-      duplicateButton.onclick = () => duplicateCreature(creature);
+      const duplicateBtn = document.createElement('button');
+      duplicateBtn.classList.add('duplicate-button');
+      duplicateBtn.textContent = '⧉';
+      duplicateBtn.onclick = () => duplicateCreature(creature);
 
-      const leftColumnContent = document.createElement('div');
-      leftColumnContent.classList.add('creature-left');
+      const left = document.createElement('div');
+      left.classList.add('creature-left');
 
-      const nameDiv = document.createElement('div');
-      nameDiv.classList.add('creature-name');
-      nameDiv.contentEditable = "true";
-      nameDiv.textContent = `Creature ${creatureCount}`;
+      const name = document.createElement('div');
+      name.classList.add('creature-name');
+      name.contentEditable = true;
+      name.textContent = data?.name || `Creature ${creatureCount}`;
 
-      const healthBarContainer = document.createElement('div');
-      healthBarContainer.classList.add('health-bar-container');
+      const healthContainer = document.createElement('div');
+      healthContainer.classList.add('health-bar-container');
+      const healthBar = createHealthBar(data?.health?.length || 7);
+      if (data?.health) {
+        healthBar.childNodes.forEach((box, i) => {
+          const value = data.health[i];
+          if (value === '/') box.classList.add('bashing'), box.textContent = '/';
+          else if (value === 'X') box.classList.add('lethal'), box.textContent = 'X';
+          else if (value === '*') box.classList.add('aggravated'), box.textContent = '*';
+        });
+      }
 
-      const healthBar = createHealthBar();
       const healthControls = document.createElement('div');
       healthControls.classList.add('health-controls');
-
-      const addHealthButton = document.createElement('button');
-      addHealthButton.textContent = '+';
-      addHealthButton.onclick = () => {
-        const newHealthBox = document.createElement('span');
-        newHealthBox.onclick = () => toggleHealthState(newHealthBox);
-        healthBar.appendChild(newHealthBox);
+      const addBtn = document.createElement('button');
+      addBtn.textContent = '+';
+      addBtn.onclick = () => {
+        const box = document.createElement('span');
+        box.onclick = () => toggleHealthState(box);
+        healthBar.appendChild(box);
       };
-
-      const removeHealthButton = document.createElement('button');
-      removeHealthButton.textContent = '-';
-      removeHealthButton.onclick = () => {
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '-';
+      removeBtn.onclick = () => {
         if (healthBar.childElementCount > 0) {
           healthBar.removeChild(healthBar.lastChild);
         }
       };
+      healthControls.appendChild(addBtn);
+      healthControls.appendChild(removeBtn);
+      healthContainer.appendChild(healthBar);
+      healthContainer.appendChild(healthControls);
 
-      healthControls.appendChild(addHealthButton);
-      healthControls.appendChild(removeHealthButton);
-      healthBarContainer.appendChild(healthBar);
-      healthBarContainer.appendChild(healthControls);
-
-      const statsDiv = document.createElement('div');
-      statsDiv.classList.add('stats');
-      statsDiv.innerHTML = `
+      const stats = document.createElement('div');
+      stats.classList.add('stats');
+      stats.innerHTML = `
         <div>
           <label>Willpower:</label>
-          <input type="number" value="5" min="0"> /
-          <input type="number" value="5" min="0">
+          <input type="number" value="${data?.willpower?.[0] || 5}" min="0"> /
+          <input type="number" value="${data?.willpower?.[1] || 5}" min="0">
         </div>
         <div>
           <label>Energy:</label>
-          <input type="number" value="10" min="0"> /
-          <input type="number" value="10" min="0">
+          <input type="number" value="${data?.energy?.[0] || 10}" min="0"> /
+          <input type="number" value="${data?.energy?.[1] || 10}" min="0">
         </div>
       `;
 
-      const rightColumnContent = document.createElement('div');
-      const notesTextarea = document.createElement('textarea');
-      notesTextarea.placeholder = "Note";
-      rightColumnContent.appendChild(notesTextarea);
+      const right = document.createElement('div');
+      const notes = document.createElement('textarea');
+      notes.placeholder = "Note";
+      notes.value = data?.notes || '';
+      right.appendChild(notes);
 
-      leftColumnContent.appendChild(nameDiv);
-      leftColumnContent.appendChild(healthBarContainer);
-      leftColumnContent.appendChild(statsDiv);
+      left.appendChild(name);
+      left.appendChild(healthContainer);
+      left.appendChild(stats);
 
-      creature.appendChild(deleteButton);
-      creature.appendChild(duplicateButton);
-      creature.appendChild(leftColumnContent);
-      creature.appendChild(rightColumnContent);
+      creature.appendChild(deleteBtn);
+      creature.appendChild(duplicateBtn);
+      creature.appendChild(left);
+      creature.appendChild(right);
 
-      if (creatureCount % 2 === 1) {
-        leftColumn.appendChild(creature);
-      } else {
-        rightColumn.appendChild(creature);
-      }
+      (creatureCount % 2 === 1 ? leftColumn : rightColumn).appendChild(creature);
     }
 
-    function duplicateCreature(originalCreature) {
-      creatureCount++;
-      const clone = originalCreature.cloneNode(true);
+    function duplicateCreature(original) {
+      const data = getCreatureData(original);
+      addCreature(data);
+    }
 
-      const nameDiv = clone.querySelector('.creature-name');
-      if (nameDiv) {
-        nameDiv.textContent = `Creature ${creatureCount}`;
-      }
+    function getCreatureData(creature) {
+      return {
+        name: creature.querySelector('.creature-name')?.textContent || '',
+        health: Array.from(creature.querySelectorAll('.health-bar span')).map(box => {
+          if (box.classList.contains('bashing')) return '/';
+          if (box.classList.contains('lethal')) return 'X';
+          if (box.classList.contains('aggravated')) return '*';
+          return '';
+        }),
+        willpower: [
+          Number(creature.querySelectorAll('input')[0]?.value || 0),
+          Number(creature.querySelectorAll('input')[1]?.value || 0)
+        ],
+        energy: [
+          Number(creature.querySelectorAll('input')[2]?.value || 0),
+          Number(creature.querySelectorAll('input')[3]?.value || 0)
+        ],
+        notes: creature.querySelector('textarea')?.value || ''
+      };
+    }
 
-      const healthBoxes = clone.querySelectorAll('.health-bar span');
-      healthBoxes.forEach(box => {
-        box.onclick = () => toggleHealthState(box);
-      });
+    function saveCreatures() {
+      const creatures = [...leftColumn.children, ...rightColumn.children].map(getCreatureData);
+      const blob = new Blob([JSON.stringify(creatures, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'creatures.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
 
-      const addButton = clone.querySelector('.health-controls button:first-child');
-      const removeButton = clone.querySelector('.health-controls button:last-child');
-      const healthBar = clone.querySelector('.health-bar');
-      if (addButton && removeButton && healthBar) {
-        addButton.onclick = () => {
-          const newHealthBox = document.createElement('span');
-          newHealthBox.onclick = () => toggleHealthState(newHealthBox);
-          healthBar.appendChild(newHealthBox);
-        };
-        removeButton.onclick = () => {
-          if (healthBar.childElementCount > 0) {
-            healthBar.removeChild(healthBar.lastChild);
-          }
-        };
-      }
-
-      const deleteButton = clone.querySelector('.delete-button');
-      if (deleteButton) {
-        deleteButton.onclick = () => clone.remove();
-      }
-      const duplicateButton = clone.querySelector('.duplicate-button');
-      if (duplicateButton) {
-        duplicateButton.onclick = () => duplicateCreature(clone);
-      }
-
-      if (creatureCount % 2 === 1) {
-        leftColumn.appendChild(clone);
-      } else {
-        rightColumn.appendChild(clone);
-      }
+    function loadCreatures(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const creatures = JSON.parse(e.target.result);
+          leftColumn.innerHTML = '';
+          rightColumn.innerHTML = '';
+          creatureCount = 0;
+          creatures.forEach(addCreature);
+        } catch {
+          alert("Errore nel file JSON.");
+        }
+      };
+      reader.readAsText(file);
     }
 
     addCreature();
